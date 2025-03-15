@@ -1,7 +1,9 @@
 {
-    "extends": ["eslint:recommended", "plugin:prettier/recommended"],
-    "rules": {
-      "prettier/prettier": ["error"]
-    }
+  "extends": ["eslint:recommended", "plugin:prettier/recommended"],
+  "env": {
+    "node": true
+  },
+  "rules": {
+    "prettier/prettier": ["error"]
   }
-  
+}
