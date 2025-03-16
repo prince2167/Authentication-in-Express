@@ -1,16 +1,16 @@
-import express from 'express'
-import dotenv from 'dotenv'
-import cors from 'cors'
-import connectDB from './utils/db.js'
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import connectDB from './utils/db.js';
 
 //import routes
-import userRoutes from './routes/user.routes.js'
+import userRoutes from './routes/user.routes.js';
 
-dotenv.config()
+dotenv.config();
 
-const app = express()
-app.use(express.json())
-app.use(express.urlencoded({ extended: false }))
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(
   cors({
     origin: process.env.BASE_URL,
@@ -18,18 +18,18 @@ app.use(
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
-)
+);
 
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 4000;
 
-connectDB()
+connectDB();
 
 app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
+  res.send('Hello World!');
+});
 
-app.use('/api/v1/users/', userRoutes)
+app.use('/api/v1/users/', userRoutes);
 
 app.listen(port, () => {
-  console.log(`Server running on port: ${port}`)
-})
+  console.log(`Server running on port: ${port}`);
+});
