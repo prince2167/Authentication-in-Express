@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './utils/db.js';
+import cookieParser from 'cookie-parser';
 
 //import routes
 import userRoutes from './routes/user.routes.js';
@@ -19,6 +20,7 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+app.use(cookieParser());
 
 const port = process.env.PORT || 4000;
 

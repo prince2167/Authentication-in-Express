@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+
 const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
   if ((!name, !email, !password)) {
@@ -62,6 +63,9 @@ const registerUser = async (req, res) => {
 
 const verifyUser = async (req, res) => {
   const { token } = req.params;
+  if (!token) {
+    return res.status(400).json({ message: 'Invalid token' });
+  }
   try {
     const user = await User.findOne({ verificationToken: token });
     if (!user) {
@@ -101,12 +105,75 @@ const login = async (req, res) => {
     }
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      'shhhh',
+      process.env.JWT_SECRET,
       {
         expiresIn: '1d',
       }
     );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      maxAge: 1 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'User logged in successfully',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {}
 };
 
-export { registerUser, verifyUser };
+const getMe = async (req, res) => {
+  try {
+    id = req.user.id;
+    console.log('id', id);
+    const user = await User.findById(id).select('-password');
+    console.log('user', user);
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+    res.status(200).json({
+      success: true,
+      message: 'User found',
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: 'Internal Server Error', error });
+  }
+};
+const logoutUser = async (req, res) => {
+  try {
+    res.cookie(token, '', {
+      expires: new Date(0),
+    });
+    res.status(200).json({
+      success: true,
+      message: 'User logged out successfully',
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: 'Internal Server Error', error });
+  }
+};
+const forgotPassword = async (req, res) => {};
+const resetPassword = async (req, res) => {};
+
+export {
+  registerUser,
+  verifyUser,
+  login,
+  getMe,
+  logoutUser,
+  forgotPassword,
+  resetPassword,
+};
