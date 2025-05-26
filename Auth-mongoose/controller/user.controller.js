@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import cookie from 'cookie';
 
 const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
@@ -133,8 +134,7 @@ const login = async (req, res) => {
 
 const getMe = async (req, res) => {
   try {
-    id = req.user.id;
-    console.log('id', id);
+    const id = res.locals.userData.id;
     const user = await User.findById(id).select('-password');
     console.log('user', user);
     if (!user) {
@@ -143,6 +143,7 @@ const getMe = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'User found',
+      user,
     });
   } catch (error) {
     res
@@ -152,8 +153,11 @@ const getMe = async (req, res) => {
 };
 const logoutUser = async (req, res) => {
   try {
-    res.cookie(token, '', {
-      expires: new Date(0),
+    res.userDaata = null;
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
     });
     res.status(200).json({
       success: true,
@@ -165,8 +169,83 @@ const logoutUser = async (req, res) => {
       .json({ success: false, message: 'Internal Server Error', error });
   }
 };
-const forgotPassword = async (req, res) => {};
-const resetPassword = async (req, res) => {};
+const forgotPassword = async (req, res) => {
+  try {
+    const email = req.params.email;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '15m',
+    });
+    console.log('resetToken: ', resetToken);
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+    await user.save();
+    console.log('user: ', user);
+
+    const resetURL = `${process.env.BASE_URL}/api/v1/users/reset-password/${resetToken}`;
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.MAILTRAP_HOST,
+      port: process.env.MAILTRAP_PORT,
+      secure: false, // true for port 465, false for other ports
+      auth: {
+        user: process.env.MAILTRAP_USERNAME,
+        pass: process.env.MAILTRAP_PASSWORD,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.MAILTRAP_SENDER_EMAIL,
+      to: user.email,
+      subject: 'Verify your email',
+      text: `Please click in the following link to reset your password: ${resetURL}`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: 'Reset link sent to your email' });
+  } catch (error) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res
+        .status(400)
+        .json({ message: 'Token and password are required' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id);
+
+    if (
+      !user ||
+      user.resetPasswordToken !== token ||
+      user.resetPasswordExpires < Date.now()
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid or expired token' });
+    }
+
+    user.resetPasswordToken = '';
+    user.resetPasswordExpires = '';
+    await user.save();
+
+    res.json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 
 export {
   registerUser,

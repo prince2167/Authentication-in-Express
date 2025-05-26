@@ -8,8 +8,8 @@ export const isLoggedIn = (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token Verified', decoded);
-    req.user = decoded;
+    console.log('Token Verified', true);
+    res.locals.userData = decoded;
     next();
   } catch (error) {
     console.log('Error in isLoggedIn middleware', error);
@@ -17,5 +17,4 @@ export const isLoggedIn = (req, res, next) => {
       .status(500)
       .json({ success: false, message: 'Internal Server Error' });
   }
-  next();
 };
